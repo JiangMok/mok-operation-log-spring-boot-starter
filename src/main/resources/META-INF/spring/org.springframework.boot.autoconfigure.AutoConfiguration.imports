@@ -1,0 +1,3 @@
+top.jiangmok.operationlog.autoconfigure.OperationLogAutoConfiguration
+top.jiangmok.operationlog.autoconfigure.OperationLogMySqlAutoConfiguration
+top.jiangmok.operationlog.autoconfigure.OperationLogESAutoConfiguration
