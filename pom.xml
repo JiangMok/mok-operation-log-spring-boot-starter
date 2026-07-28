@@ -55,10 +55,11 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- RabbitMQ -->
+        <!-- RabbitMQ（可选，仅 rabbitmq 策略时需要） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- Web（需要 HttpServletRequest） -->
@@ -78,13 +79,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <!-- Hutool（IdUtil.simpleUUID()） -->
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-            <version>5.8.42</version>
         </dependency>
 
         <!-- ========== 可选依赖（按存储后端选择） ========== -->

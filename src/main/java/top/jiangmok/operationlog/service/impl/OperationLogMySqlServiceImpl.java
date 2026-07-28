@@ -1,6 +1,5 @@
 package top.jiangmok.operationlog.service.impl;
 
-import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -11,6 +10,7 @@ import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.entity.OperationLogEntity;
 import top.jiangmok.operationlog.mapper.OperationLogMapper;
 import top.jiangmok.operationlog.service.OperationLogService;
+import top.jiangmok.operationlog.util.IdGenerator;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,7 +56,10 @@ public class OperationLogMySqlServiceImpl
             }
 
             entity.setOperTime(LocalDateTime.now());
-            entity.setId(IdUtil.simpleUUID());
+            // 优先使用已有 ID（避免覆盖 Consumer 已设置的 ID），为空时才生成
+            if (entity.getId() == null || entity.getId().isEmpty()) {
+                entity.setId(IdGenerator.generate());
+            }
             save(entity);
             log.debug("操作日志已记录：{} - {}", entity.getTitle(), entity.getOperatorName());
         } catch (Exception e) {

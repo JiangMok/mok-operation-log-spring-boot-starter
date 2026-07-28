@@ -1,23 +1,21 @@
 package top.jiangmok.operationlog.aspect;
 
-import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.*;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import top.jiangmok.operationlog.annotation.OperationLog;
 import top.jiangmok.operationlog.config.OperationLogProperties;
-import top.jiangmok.operationlog.constant.OperationLogMQConstant;
 import top.jiangmok.operationlog.desensitize.ParamDesensitizer;
 import top.jiangmok.operationlog.message.OperationLogMessage;
 import top.jiangmok.operationlog.operator.OperatorResolver;
+import top.jiangmok.operationlog.sender.OperationLogAsyncSender;
+import top.jiangmok.operationlog.util.IdGenerator;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -35,17 +33,19 @@ public class OperationLogAspect {
 
     private static final Logger log = LoggerFactory.getLogger(OperationLogAspect.class);
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final OperationLogProperties properties;
-    private final RabbitTemplate rabbitTemplate;
+    private final OperationLogAsyncSender sender;
     private final OperatorResolver operatorResolver;
     private final ParamDesensitizer paramDesensitizer;
 
     public OperationLogAspect(OperationLogProperties properties,
-                              RabbitTemplate rabbitTemplate,
+                              OperationLogAsyncSender sender,
                               OperatorResolver operatorResolver,
                               ParamDesensitizer paramDesensitizer) {
         this.properties = properties;
-        this.rabbitTemplate = rabbitTemplate;
+        this.sender = sender;
         this.operatorResolver = operatorResolver;
         this.paramDesensitizer = paramDesensitizer;
     }
@@ -88,11 +88,8 @@ public class OperationLogAspect {
 
             // 4. 构建并发送消息
             OperationLogMessage message = buildMessage(joinPoint, request, annotation, e, jsonResult);
-            rabbitTemplate.convertAndSend(
-                    OperationLogMQConstant.OPERATION_LOG_EXCHANGE,
-                    OperationLogMQConstant.OPERATION_LOG_ROUTING_KEY,
-                    message);
-            log.debug("操作日志已发送到消息队列: {}", message.getTitle());
+            sender.send(message);
+            log.debug("操作日志已发送: {}", message.getTitle());
 
         } catch (Exception ex) {
             log.error("构建操作日志消息失败", ex);
@@ -109,7 +106,7 @@ public class OperationLogAspect {
         OperationLogMessage message = new OperationLogMessage();
 
         // 基本信息
-        message.setId(IdUtil.simpleUUID());
+        message.setId(IdGenerator.generate());
         message.setTitle(annotation.title());
         message.setBusinessType(annotation.businessType().getValue());
         message.setMethod(method.getDeclaringClass().getName() + "." + method.getName());
@@ -141,7 +138,9 @@ public class OperationLogAspect {
         // 状态
         if (e != null) {
             message.setStatus(1);
-            message.setErrorMsg(StrUtil.sub(e.getMessage(), 0, 2000));
+            String errMsg = e.getMessage();
+            message.setErrorMsg(errMsg != null && errMsg.length() > 2000
+                    ? errMsg.substring(0, 2000) : errMsg);
         } else {
             message.setStatus(0);
         }
@@ -158,7 +157,7 @@ public class OperationLogAspect {
             Object[] args = joinPoint.getArgs();
             for (int i = 0; i < args.length; i++) {
                 if (args[i] != null) {
-                    String jsonStr = JSONUtil.toJsonStr(args[i]);
+                    String jsonStr = MAPPER.writeValueAsString(args[i]);
                     String desensitized = paramDesensitizer.desensitize(jsonStr);
                     sb.append(desensitized);
                     if (i < args.length - 1) {

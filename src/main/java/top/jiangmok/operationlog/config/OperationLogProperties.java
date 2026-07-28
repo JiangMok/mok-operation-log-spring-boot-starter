@@ -22,6 +22,12 @@ public class OperationLogProperties {
     /** 存储位置：mysql 或 es，默认 mysql */
     private String saveLocation = "mysql";
 
+    /** 异步策略：async（默认）| rabbitmq */
+    private String asyncStrategy = "async";
+
+    /** 线程池配置（仅 async 策略生效） */
+    private TaskExecutorProperties taskExecutor = new TaskExecutorProperties();
+
     // ---- Getter/Setter ----
 
     public Boolean getEnabled() {
@@ -56,6 +62,22 @@ public class OperationLogProperties {
         this.saveLocation = saveLocation;
     }
 
+    public String getAsyncStrategy() {
+        return asyncStrategy;
+    }
+
+    public void setAsyncStrategy(String asyncStrategy) {
+        this.asyncStrategy = asyncStrategy;
+    }
+
+    public TaskExecutorProperties getTaskExecutor() {
+        return taskExecutor;
+    }
+
+    public void setTaskExecutor(TaskExecutorProperties taskExecutor) {
+        this.taskExecutor = taskExecutor;
+    }
+
     @Override
     public String toString() {
         return "OperationLogProperties{" +
@@ -63,6 +85,58 @@ public class OperationLogProperties {
                 ", recordGet=" + recordGet +
                 ", maxContentLength=" + maxContentLength +
                 ", saveLocation='" + saveLocation + '\'' +
+                ", asyncStrategy='" + asyncStrategy + '\'' +
+                ", taskExecutor=" + taskExecutor +
                 '}';
+    }
+
+    /**
+     * 线程池配置
+     */
+    public static class TaskExecutorProperties {
+
+        /** 核心线程数，默认 2 */
+        private int coreSize = 2;
+
+        /** 最大线程数，默认 4 */
+        private int maxSize = 4;
+
+        /** 队列容量，默认 200 */
+        private int queueCapacity = 200;
+
+        // ---- Getter/Setter ----
+
+        public int getCoreSize() {
+            return coreSize;
+        }
+
+        public void setCoreSize(int coreSize) {
+            this.coreSize = coreSize;
+        }
+
+        public int getMaxSize() {
+            return maxSize;
+        }
+
+        public void setMaxSize(int maxSize) {
+            this.maxSize = maxSize;
+        }
+
+        public int getQueueCapacity() {
+            return queueCapacity;
+        }
+
+        public void setQueueCapacity(int queueCapacity) {
+            this.queueCapacity = queueCapacity;
+        }
+
+        @Override
+        public String toString() {
+            return "TaskExecutorProperties{" +
+                    "coreSize=" + coreSize +
+                    ", maxSize=" + maxSize +
+                    ", queueCapacity=" + queueCapacity +
+                    '}';
+        }
     }
 }
