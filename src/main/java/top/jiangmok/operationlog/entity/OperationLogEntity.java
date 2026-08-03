@@ -1,5 +1,7 @@
 package top.jiangmok.operationlog.entity;
 
+import com.baomidou.mybatisplus.annotation.TableName;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -8,6 +10,7 @@ import java.util.Objects;
  *
  * @author mok
  */
+@TableName("sys_operation_log")
 public class OperationLogEntity {
 
     private String id;
