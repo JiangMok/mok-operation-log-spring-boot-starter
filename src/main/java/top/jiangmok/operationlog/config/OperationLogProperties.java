@@ -19,11 +19,14 @@ public class OperationLogProperties {
     /** 参数/响应内容最大长度（超过则截断），默认 2000 */
     private Integer maxContentLength = 2000;
 
-    /** 存储位置：mysql 或 es，默认 mysql */
-    private String saveLocation = "mysql";
+    /** 存储位置：file | mysql | es，默认 file（零依赖起步） */
+    private String saveLocation = "file";
 
     /** 异步策略：async（默认）| rabbitmq */
     private String asyncStrategy = "async";
+
+    /** 文件存储配置（仅 file 模式生效） */
+    private FileProperties file = new FileProperties();
 
     /** 线程池配置（仅 async 策略生效） */
     private TaskExecutorProperties taskExecutor = new TaskExecutorProperties();
@@ -70,6 +73,14 @@ public class OperationLogProperties {
         this.asyncStrategy = asyncStrategy;
     }
 
+    public FileProperties getFile() {
+        return file;
+    }
+
+    public void setFile(FileProperties file) {
+        this.file = file;
+    }
+
     public TaskExecutorProperties getTaskExecutor() {
         return taskExecutor;
     }
@@ -86,8 +97,59 @@ public class OperationLogProperties {
                 ", maxContentLength=" + maxContentLength +
                 ", saveLocation='" + saveLocation + '\'' +
                 ", asyncStrategy='" + asyncStrategy + '\'' +
+                ", file=" + file +
                 ", taskExecutor=" + taskExecutor +
                 '}';
+    }
+
+    /**
+     * 文件存储配置
+     */
+    public static class FileProperties {
+
+        /** 日志文件目录，默认 ./logs/operation-logs */
+        private String logDir = "./logs/operation-logs";
+
+        /** 滚动策略：daily（按天）| none（单文件），默认 daily */
+        private String rollover = "daily";
+
+        /** 最大保留天数，默认 90（仅 daily 模式生效） */
+        private int maxRetentionDays = 90;
+
+        // ---- Getter/Setter ----
+
+        public String getLogDir() {
+            return logDir;
+        }
+
+        public void setLogDir(String logDir) {
+            this.logDir = logDir;
+        }
+
+        public String getRollover() {
+            return rollover;
+        }
+
+        public void setRollover(String rollover) {
+            this.rollover = rollover;
+        }
+
+        public int getMaxRetentionDays() {
+            return maxRetentionDays;
+        }
+
+        public void setMaxRetentionDays(int maxRetentionDays) {
+            this.maxRetentionDays = maxRetentionDays;
+        }
+
+        @Override
+        public String toString() {
+            return "FileProperties{" +
+                    "logDir='" + logDir + '\'' +
+                    ", rollover='" + rollover + '\'' +
+                    ", maxRetentionDays=" + maxRetentionDays +
+                    '}';
+        }
     }
 
     /**

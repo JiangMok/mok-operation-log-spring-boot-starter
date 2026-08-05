@@ -1,36 +1,29 @@
 package top.jiangmok.operationlog.autoconfigure;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.service.OperationLogService;
-import top.jiangmok.operationlog.service.impl.OperationLogMySqlServiceImpl;
+import top.jiangmok.operationlog.service.impl.OperationLogFileServiceImpl;
 
 /**
- * MySQL 存储自动配置
- * <p>
- * 当 save-location=mysql 且 classpath 上存在 MyBatis-Plus 时激活。
- * 需要用户自行配置数据源。
- * </p>
+ * 文件存储自动配置（默认）
+ * 当 save-location=file（或不配置，默认值）时激活。
+ * 零外部依赖——纯 JDK + Jackson，无需数据源、无需中间件。
  *
  * @author mok
  */
 @AutoConfiguration
-@ConditionalOnProperty(name = "mok.operation-log.save-location", havingValue = "mysql")
-@ConditionalOnClass({BaseMapper.class})
+@ConditionalOnProperty(name = "mok.operation-log.save-location", havingValue = "file", matchIfMissing = true)
 @EnableConfigurationProperties(OperationLogProperties.class)
-@MapperScan("top.jiangmok.operationlog.mapper")
-public class OperationLogMySqlAutoConfiguration {
+public class OperationLogFileAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
     public OperationLogService operationLogService(OperationLogProperties properties) {
-        return new OperationLogMySqlServiceImpl(properties);
+        return new OperationLogFileServiceImpl(properties);
     }
 }

@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * @author mok
  */
-@TableName("sys_operation_log")
+@TableName("mok_operation_log")
 public class OperationLogEntity {
 
     private String id;

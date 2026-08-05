@@ -312,7 +312,7 @@ class OperationLogAutoConfigurationTest {
                     .run(context -> {
                         OperationLogProperties props = context.getBean(OperationLogProperties.class);
                         assertThat(props.getEnabled()).isTrue();
-                        assertThat(props.getSaveLocation()).isEqualTo("mysql");
+                        assertThat(props.getSaveLocation()).isEqualTo("file");
                         assertThat(props.getRecordGet()).isTrue();
                         assertThat(props.getMaxContentLength()).isEqualTo(2000);
                         assertThat(props.getAsyncStrategy()).isEqualTo("async");

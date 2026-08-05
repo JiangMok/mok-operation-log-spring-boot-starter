@@ -2,7 +2,7 @@
 -- 操作日志表建表语句
 -- 数据库: MySQL 8.0+
 -- ==========================================
-CREATE TABLE IF NOT EXISTS `sys_operation_log` (
+CREATE TABLE IF NOT EXISTS `mok_operation_log` (
     `id`             VARCHAR(64)  NOT NULL COMMENT '日志主键',
     `title`          VARCHAR(100) DEFAULT '' COMMENT '操作标题',
     `business_type`  VARCHAR(50)  DEFAULT '' COMMENT '业务类型',
