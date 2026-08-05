@@ -29,7 +29,7 @@
 
 **就这一个依赖。** 不需要 MySQL、不需要 ES、不需要 RabbitMQ。
 
-### 场景一：最小配置（最懒人）
+### 场景一：最小配置
 
 依赖引入后，yaml **一行都不写**，直接用注解：
 
@@ -68,6 +68,7 @@ public class UserController {
 | `task-executor.core-size` | `2` | 核心线程 2 个 |
 | `task-executor.max-size` | `4` | 最多扩到 4 个 |
 | `task-executor.queue-capacity` | `200` | 队列 200 个 |
+| `startup-print` | `true` | 启动时打印 banner |
 
 **不用装数据库、不用装 MQ。** 请求进来 → 切面拦截 → 丢给线程池 → 追加写入 JSONL 文件，主线程不阻塞。
 
@@ -195,11 +196,12 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `mok.operation-log.enabled` | Boolean | `true` | 是否启用操作日志 |
+| `mok.operation-log.enabled` | Boolean | `true` | 是否启用操作日志，设 `false` 可完全关闭 |
 | `mok.operation-log.save-location` | String | `file` | 存储位置：`file`、`mysql` 或 `es` |
 | `mok.operation-log.async-strategy` | String | `async` | `async`（默认）或 `rabbitmq` |
 | `mok.operation-log.record-get` | Boolean | `true` | 是否记录 GET 请求 |
 | `mok.operation-log.max-content-length` | Integer | `2000` | 参数/响应超过此长度自动截断 |
+| `mok.operation-log.startup-print` | Boolean | `true` | 启动时是否打印 banner，设 `false` 可静默启动 |
 | `mok.operation-log.file.log-dir` | String | `./logs/operation-logs` | 日志文件目录（仅 file 模式） |
 | `mok.operation-log.file.rollover` | String | `daily` | 滚动策略：`daily`（按天）或 `none`（单文件） |
 | `mok.operation-log.file.max-retention-days` | int | `90` | 最大保留天数（仅 daily 模式） |
@@ -216,9 +218,39 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 | 额外依赖 | 无 | MyBatis-Plus + MySQL 驱动 | spring-boot-starter-data-elasticsearch |
 | 安装配置 | 无 | 数据源 + 建表 | ES 集群连接 |
 | 写入性能 | 极快（追加写） | 快 | 快 |
-| 查询能力 | 关键字 + 时间范围 | 完整 SQL | 全文检索 |
+| 查询能力 | title/操作人/URL 模糊匹配 + 状态/类型/时间范围过滤 | 完整 SQL | 全文检索 |
 | 适用规模 | 开发/小项目 | 中小型 | 中大型 |
 | 运维成本 | 零 | 中 | 高 |
+
+> **文件存储亮点（`OperationLogFileServiceImpl`）**  
+> - **并发安全**：`ConcurrentHashMap` 按文件加锁（`synchronized`），多线程追加写入不串行、不丢数据  
+> - **自动清理**：超出 `file.max-retention-days` 的文件在写入时自动删除，无需外部定时任务  
+> - **时间范围优化**：查询时按文件名中的日期自动缩小扫描范围，避免全量遍历  
+> - **内容截断**：写入时自动按 `max-content-length` 截断过长参数/响应，防止单行爆炸  
+> - **零依赖**：纯 JDK NIO + Jackson，无需任何数据库或中间件
+
+---
+
+## 注解参数
+
+`@OperationLog` 完整参数：
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `title` | String | `""` | 接口标题 |
+| `businessType` | BusinessType | `OTHER` | 操作类型 |
+| `saveRequestParam` | boolean | `true` | 是否保存请求参数，设 `false` 可跳过敏感接口的入参记录 |
+| `saveResponseData` | boolean | `true` | 是否保存响应数据，设 `false` 可减小日志体积 |
+
+示例：
+
+```java
+// 只记标题和类型，不记入参和响应（适合敏感接口）
+@OperationLog(title = "用户登录", businessType = BusinessType.LOGIN,
+              saveRequestParam = false, saveResponseData = false)
+@PostMapping("/login")
+public R login(@RequestBody LoginDTO dto) { ... }
+```
 
 ---
 
@@ -244,6 +276,8 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 ## 操作人解析器（可选）
 
 如果项目使用 **Sa-Token** 或 **Spring Security**，Starter 会自动检测并创建对应的 OperatorResolver，无需手动实现。
+
+> **注意**：当前 Aspect 自动采集 `operatorName` 和 `operatorType` 写入日志。`operatorId` 和 `deptName` 为预留扩展字段，可在自定义查询/统计场景中使用——如有需要，自行实现并从 `OperatorResolver` 取出即可。
 
 手动实现示例：
 

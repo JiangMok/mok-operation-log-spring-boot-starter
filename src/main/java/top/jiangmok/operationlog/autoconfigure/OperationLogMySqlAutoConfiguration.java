@@ -2,6 +2,8 @@ package top.jiangmok.operationlog.autoconfigure;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.mybatis.spring.annotation.MapperScan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -28,9 +30,12 @@ import top.jiangmok.operationlog.service.impl.OperationLogMySqlServiceImpl;
 @MapperScan("top.jiangmok.operationlog.mapper")
 public class OperationLogMySqlAutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger(OperationLogMySqlAutoConfiguration.class);
+
     @Bean
     @ConditionalOnMissingBean
     public OperationLogService operationLogService(OperationLogProperties properties) {
+        log.info("============= mok-operation-log-spring-boot-starter >> 启用 MySQL 保存策略");
         return new OperationLogMySqlServiceImpl(properties);
     }
 }

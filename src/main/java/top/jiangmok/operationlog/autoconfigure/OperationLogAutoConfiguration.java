@@ -1,8 +1,11 @@
 package top.jiangmok.operationlog.autoconfigure;
 
 import cn.dev33.satoken.stp.StpUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -44,6 +47,17 @@ import static top.jiangmok.operationlog.constant.OperationLogMQConstant.*;
 @EnableConfigurationProperties(OperationLogProperties.class)
 @ConditionalOnProperty(prefix = "mok.operation-log", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class OperationLogAutoConfiguration {
+
+    private static final Logger log = LoggerFactory.getLogger(OperationLogAutoConfiguration.class);
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mok.operation-log", name = "startup-print", havingValue = "true", matchIfMissing = true)
+    public ApplicationRunner operationLogStartupRunner(OperationLogProperties properties) {
+        return args -> {
+            log.info("============= mok-operation-log-spring-boot-starter >> 已启用");
+            log.info("============= mok-operation-log-spring-boot-starter >> 异步策略: {}", properties.getAsyncStrategy());
+        };
+    }
 
     // ==================== 线程池 ====================
 

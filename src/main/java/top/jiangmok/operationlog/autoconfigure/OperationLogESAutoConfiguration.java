@@ -1,5 +1,7 @@
 package top.jiangmok.operationlog.autoconfigure;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -26,10 +28,13 @@ import top.jiangmok.operationlog.service.impl.OperationLogESServiceImpl;
 @EnableElasticsearchRepositories(basePackages = "top.jiangmok.operationlog.repository")
 public class OperationLogESAutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger(OperationLogESAutoConfiguration.class);
+
     @Bean
     @ConditionalOnMissingBean
     public OperationLogService operationLogService(OperationLogRepository repository,
                                                    ElasticsearchOperations elasticsearchOperations) {
+        log.info("============= mok-operation-log-spring-boot-starter >> 启用 ES 保存策略");
         return new OperationLogESServiceImpl(repository, elasticsearchOperations);
     }
 }

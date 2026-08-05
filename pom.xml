@@ -17,7 +17,7 @@
     <packaging>jar</packaging>
 
     <name>Mok Operation Log Spring Boot Starter</name>
-    <description>基于 AOP + RabbitMQ 的异步操作日志自动记录 Starter，支持 MySQL 和 Elasticsearch 双后端存储</description>
+    <description>基于 AOP + 可插拔异步策略的操作日志自动记录 Starter，支持文件、MySQL 和 Elasticsearch 三后端存储</description>
     <url>https://jiangmok.top</url>
 
     <licenses>
@@ -29,9 +29,9 @@
 
     <developers>
         <developer>
-            <name>mok</name>
-            <email>admin@jiangmok.top</email>
-            <url>https://jiangmok.top</url>
+            <name>jiangmok</name>
+            <email>jiangmok@126.com</email>
+            <url>https://www.jiangmok.top</url>
         </developer>
     </developers>
 

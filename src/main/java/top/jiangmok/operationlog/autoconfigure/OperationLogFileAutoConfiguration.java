@@ -1,5 +1,7 @@
 package top.jiangmok.operationlog.autoconfigure;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,9 +23,12 @@ import top.jiangmok.operationlog.service.impl.OperationLogFileServiceImpl;
 @EnableConfigurationProperties(OperationLogProperties.class)
 public class OperationLogFileAutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger(OperationLogFileAutoConfiguration.class);
+
     @Bean
     @ConditionalOnMissingBean
     public OperationLogService operationLogService(OperationLogProperties properties) {
+        log.info("============= mok-operation-log-spring-boot-starter >> 启用 File 保存策略");
         return new OperationLogFileServiceImpl(properties);
     }
 }
