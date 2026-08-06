@@ -28,6 +28,9 @@ public class OperationLogProperties {
     /** 文件存储配置（仅 file 模式生效） */
     private FileProperties file = new FileProperties();
 
+    /** 启动时是否打印 banner，默认 true */
+    private Boolean startupPrint = true;
+
     /** 线程池配置（仅 async 策略生效） */
     private TaskExecutorProperties taskExecutor = new TaskExecutorProperties();
 
@@ -73,6 +76,14 @@ public class OperationLogProperties {
         this.asyncStrategy = asyncStrategy;
     }
 
+    public Boolean getStartupPrint() {
+        return startupPrint;
+    }
+
+    public void setStartupPrint(Boolean startupPrint) {
+        this.startupPrint = startupPrint;
+    }
+
     public FileProperties getFile() {
         return file;
     }
@@ -97,6 +108,7 @@ public class OperationLogProperties {
                 ", maxContentLength=" + maxContentLength +
                 ", saveLocation='" + saveLocation + '\'' +
                 ", asyncStrategy='" + asyncStrategy + '\'' +
+                ", startupPrint=" + startupPrint +
                 ", file=" + file +
                 ", taskExecutor=" + taskExecutor +
                 '}';

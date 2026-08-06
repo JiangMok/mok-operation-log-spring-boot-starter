@@ -89,8 +89,24 @@ public class OperationLogFileServiceImpl implements OperationLogService {
 
             log.debug("操作日志已写入文件: {} - {}", entity.getTitle(), entity.getOperatorName());
 
+            // 自动清理过期文件
+            cleanExpiredFiles();
+
         } catch (IOException e) {
             log.error("写入操作日志文件失败", e);
+        }
+    }
+
+    /** 按 maxRetentionDays 自动清理过期日志文件 */
+    private void cleanExpiredFiles() {
+        int maxRetentionDays = properties.getFile().getMaxRetentionDays();
+        if (maxRetentionDays <= 0) {
+            return;
+        }
+        LocalDateTime threshold = LocalDateTime.now().minusDays(maxRetentionDays);
+        int deleted = cleanLogsBefore(threshold);
+        if (deleted > 0) {
+            log.info("自动清理过期日志文件: {} 条", deleted);
         }
     }
 
