@@ -68,14 +68,22 @@ public class OperationLogAspect {
      * 收集日志信息并通过消息队列发送
      */
     protected void handleLog(final JoinPoint joinPoint, final Exception e, Object jsonResult) {
+        // 1. 获取当前请求（Web 环境）
+        HttpServletRequest request;
         try {
-            // 1. 获取当前请求
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            ServletRequestAttributes attributes =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes == null) {
                 return;
             }
-            HttpServletRequest request = attributes.getRequest();
+            request = attributes.getRequest();
+        } catch (NoClassDefFoundError ex) {
+            // 非 Web 环境（classpath 未引入 spring-boot-starter-web），跳过日志记录
+            log.debug("Non-web environment, skipping operation log");
+            return;
+        }
 
+        try {
             // 2. 获取方法上的 @OperationLog 注解
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             Method method = signature.getMethod();

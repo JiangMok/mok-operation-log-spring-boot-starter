@@ -17,7 +17,7 @@
     <packaging>jar</packaging>
 
     <name>Mok Operation Log Spring Boot Starter</name>
-    <description>基于 AOP + 可插拔异步策略的操作日志自动记录 Starter，支持文件、MySQL 和 Elasticsearch 三后端存储</description>
+    <description>AOP-based operation log Spring Boot 3.x Starter with pluggable storage backends (File / MySQL / Elasticsearch) and async strategies (in-memory / RabbitMQ)</description>
     <url>https://jiangmok.top</url>
 
     <licenses>
@@ -62,10 +62,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Web（需要 HttpServletRequest） -->
+        <!-- Web（需要 HttpServletRequest，非 Web 项目可排除） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- 配置处理器（生成 metadata.json） -->
@@ -145,6 +146,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <doclint>all,-missing</doclint>
+                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
