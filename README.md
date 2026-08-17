@@ -11,6 +11,7 @@
 - 📨 **可选 MQ**：可切换至 RabbitMQ 策略，完整保留重试/DLX/幂等逻辑
 - 🧩 **SPI 可扩展**：操作人获取、参数脱敏、异步发送均可自定义实现
 - 🛡️ **参数脱敏**：自动过滤 password/token/secret 等敏感字段
+- 🧾 **业务失败分类**：业务校验异常自动记为"业务失败"（status=2），与系统异常（status=1）区分统计
 - 🎯 **Spring Boot 3.x 原生**：基于 AutoConfiguration，零 XML 配置
 
 ---
@@ -23,7 +24,7 @@
 <dependency>
     <groupId>top.jiangmok</groupId>
     <artifactId>mok-operation-log-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -115,7 +116,7 @@ mok:
 >     `oper_location`  VARCHAR(100) DEFAULT '' COMMENT '操作地点',
 >     `oper_param`     TEXT         COMMENT '请求参数',
 >     `json_result`    TEXT         COMMENT '响应结果',
->     `status`         TINYINT      DEFAULT 0 COMMENT '状态(0成功 1失败)',
+>     `status`         TINYINT      DEFAULT 0 COMMENT '状态(0成功 1失败 2业务失败)',
 >     `error_msg`      TEXT         COMMENT '错误信息',
 >     `oper_time`      DATETIME     COMMENT '操作时间',
 >     `create_time`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -231,6 +232,7 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 | `mok.operation-log.record-get` | Boolean | `true` | 是否记录 GET 请求 |
 | `mok.operation-log.max-content-length` | Integer | `2000` | 参数/响应超过此长度自动截断 |
 | `mok.operation-log.startup-print` | Boolean | `true` | 启动时是否打印 banner，设 `false` 可静默启动 |
+| `mok.operation-log.business-exceptions` | List\<String\> | 空 | 业务异常全限定类名列表（子类自动匹配），命中记为"业务失败"而非"失败" |
 | `mok.operation-log.file.log-dir` | String | `./logs/operation-logs` | 日志文件目录（仅 file 模式） |
 | `mok.operation-log.file.rollover` | String | `daily` | 滚动策略：`daily`（按天）或 `none`（单文件） |
 | `mok.operation-log.file.max-retention-days` | int | `90` | 最大保留天数（仅 daily 模式） |
@@ -270,6 +272,7 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 | `businessType` | BusinessType | `OTHER` | 操作类型 |
 | `saveRequestParam` | boolean | `true` | 是否保存请求参数，设 `false` 可跳过敏感接口的入参记录 |
 | `saveResponseData` | boolean | `true` | 是否保存响应数据，设 `false` 可减小日志体积 |
+| `businessExceptions` | Class\<? extends Throwable\>[] | `{}` | 业务异常类型（子类自动匹配），与全局配置取并集，抛出即记为"业务失败" |
 
 示例：
 
@@ -280,6 +283,39 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 @PostMapping("/login")
 public R login(@RequestBody LoginDTO dto) { ... }
 ```
+
+---
+
+## 业务失败分类
+
+业务校验未通过抛出的异常（如自定义 `BusinessException`）默认会记为 `status=1` 失败，与真正的系统异常混在一起。通过声明"业务异常"，可将其单独记为 `status=2` 业务失败，异常仍照常向上抛出，不影响全局异常处理。
+
+**状态语义**：
+
+| status | 含义 | 说明 |
+|:--:|------|------|
+| `0` | 成功 | 方法正常返回 |
+| `1` | 失败 | 系统异常（未声明的异常） |
+| `2` | 业务失败 | 声明的业务异常（校验失败等），errorMsg 保留 |
+
+**两种声明方式（取并集，子类自动匹配）**：
+
+```yaml
+# 方式一：全局配置（适合 BusinessException 全局生效）
+mok:
+  operation-log:
+    business-exceptions:
+      - com.example.common.exception.BusinessException
+```
+
+```java
+// 方式二：注解声明（适合单个接口差异化）
+@OperationLog(title = "删除用户", businessExceptions = {BusinessException.class})
+@DeleteMapping("/user/{id}")
+public R delete(@PathVariable Long id) { ... }
+```
+
+> 类名写错（无法加载）时启动阶段打 WARN 并忽略该项，不影响其他配置和业务运行。
 
 ---
 

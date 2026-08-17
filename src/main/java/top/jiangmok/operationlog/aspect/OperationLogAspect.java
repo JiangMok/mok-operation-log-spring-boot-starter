@@ -12,6 +12,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import top.jiangmok.operationlog.annotation.OperationLog;
 import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.desensitize.ParamDesensitizer;
+import top.jiangmok.operationlog.enums.OperationStatus;
 import top.jiangmok.operationlog.message.OperationLogMessage;
 import top.jiangmok.operationlog.operator.OperatorResolver;
 import top.jiangmok.operationlog.sender.OperationLogAsyncSender;
@@ -19,6 +20,9 @@ import top.jiangmok.operationlog.util.IdGenerator;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 操作日志 AOP 切面
@@ -40,6 +44,9 @@ public class OperationLogAspect {
     private final OperatorResolver operatorResolver;
     private final ParamDesensitizer paramDesensitizer;
 
+    /** 全局配置的业务异常类（启动时解析，解析失败的类名打 warn 并忽略） */
+    private final List<Class<?>> configBusinessExceptions;
+
     public OperationLogAspect(OperationLogProperties properties,
                               OperationLogAsyncSender sender,
                               OperatorResolver operatorResolver,
@@ -48,6 +55,7 @@ public class OperationLogAspect {
         this.sender = sender;
         this.operatorResolver = operatorResolver;
         this.paramDesensitizer = paramDesensitizer;
+        this.configBusinessExceptions = resolveBusinessExceptions(properties.getBusinessExceptions());
     }
 
     @Pointcut("@annotation(top.jiangmok.operationlog.annotation.OperationLog)")
@@ -143,17 +151,57 @@ public class OperationLogAspect {
             message.setJsonResult(jsonResult.toString());
         }
 
-        // 状态
+        // 状态：0-成功, 1-失败（系统异常）, 2-业务失败（业务校验未通过等非系统异常）
         if (e != null) {
-            message.setStatus(1);
+            message.setStatus(isBusinessException(e, annotation)
+                    ? OperationStatus.BIZ_FAIL.getValue() : OperationStatus.FAIL.getValue());
             String errMsg = e.getMessage();
             message.setErrorMsg(errMsg != null && errMsg.length() > 2000
                     ? errMsg.substring(0, 2000) : errMsg);
         } else {
-            message.setStatus(0);
+            message.setStatus(OperationStatus.SUCCESS.getValue());
         }
 
         return message;
+    }
+
+    /**
+     * 判断异常是否为"业务异常"（业务校验未通过等非系统异常）
+     * <p>
+     * 匹配规则：注解 businessExceptions 与全局配置 business-exceptions 取并集，子类自动命中。
+     * </p>
+     */
+    private boolean isBusinessException(Throwable e, OperationLog annotation) {
+        for (Class<? extends Throwable> clazz : annotation.businessExceptions()) {
+            if (clazz.isAssignableFrom(e.getClass())) {
+                return true;
+            }
+        }
+        for (Class<?> clazz : configBusinessExceptions) {
+            if (clazz.isAssignableFrom(e.getClass())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 解析全局配置的业务异常类名（启动时执行一次）
+     * <p>类名写错（无法加载）时打 warn 并忽略该项，不影响其他配置和业务运行。</p>
+     */
+    private static List<Class<?>> resolveBusinessExceptions(List<String> classNames) {
+        if (classNames == null || classNames.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Class<?>> result = new ArrayList<>(classNames.size());
+        for (String className : classNames) {
+            try {
+                result.add(Class.forName(className.trim()));
+            } catch (ClassNotFoundException e) {
+                log.warn("业务异常类 {} 加载失败，已忽略该配置项", className, e);
+            }
+        }
+        return result;
     }
 
     /**

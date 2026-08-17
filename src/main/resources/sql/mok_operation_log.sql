@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `mok_operation_log` (
     `oper_location`  VARCHAR(100) DEFAULT '' COMMENT '操作地点',
     `oper_param`     TEXT         COMMENT '请求参数',
     `json_result`    TEXT         COMMENT '响应结果',
-    `status`         TINYINT      DEFAULT 0 COMMENT '状态(0成功 1失败)',
+    `status`         TINYINT      DEFAULT 0 COMMENT '状态(0成功 1失败 2业务失败)',
     `error_msg`      TEXT         COMMENT '错误信息',
     `oper_time`      DATETIME     COMMENT '操作时间',
     `create_time`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

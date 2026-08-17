@@ -25,4 +25,11 @@ public @interface OperationLog {
 
     /** 是否保存响应参数 */
     boolean saveResponseData() default true;
+
+    /**
+     * 业务异常类型（子类自动匹配），默认空
+     * <p>抛出这些异常的方法记录为"业务失败"（status=2），而非"失败"（status=1）。
+     * 与全局配置 {@code mok.operation-log.business-exceptions} 取并集。</p>
+     */
+    Class<? extends Throwable>[] businessExceptions() default {};
 }

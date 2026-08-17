@@ -316,6 +316,22 @@ class OperationLogAutoConfigurationTest {
                         assertThat(props.getRecordGet()).isTrue();
                         assertThat(props.getMaxContentLength()).isEqualTo(2000);
                         assertThat(props.getAsyncStrategy()).isEqualTo("async");
+                        assertThat(props.getBusinessExceptions()).isEmpty();
+                    });
+        }
+
+        @Test
+        @DisplayName("business-exceptions 列表正确绑定")
+        void shouldBindBusinessExceptions() {
+            withMocks()
+                    .withPropertyValues(
+                            "mok.operation-log.business-exceptions[0]=com.example.BizException",
+                            "mok.operation-log.business-exceptions[1]=com.example.ValidateException"
+                    )
+                    .run(context -> {
+                        OperationLogProperties props = context.getBean(OperationLogProperties.class);
+                        assertThat(props.getBusinessExceptions())
+                                .containsExactly("com.example.BizException", "com.example.ValidateException");
                     });
         }
     }

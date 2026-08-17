@@ -24,7 +24,7 @@ public class OperationLogMessage implements Serializable {
     private String operatorType;
     private String operParam;
     private String jsonResult;
-    private Integer status;         // 0-成功, 1-失败
+    private Integer status;         // 0-成功, 1-失败, 2-业务失败
     private String errorMsg;
     private LocalDateTime operTime;
 

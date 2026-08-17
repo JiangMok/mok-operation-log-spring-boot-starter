@@ -2,6 +2,9 @@ package top.jiangmok.operationlog.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 操作日志配置属性
  *
@@ -24,6 +27,12 @@ public class OperationLogProperties {
 
     /** 异步策略：async（默认）| rabbitmq */
     private String asyncStrategy = "async";
+
+    /**
+     * 业务异常全限定类名列表（子类自动匹配），默认空
+     * <p>命中这些异常的操作记录为"业务失败"（status=2），而非"失败"（status=1）。</p>
+     */
+    private List<String> businessExceptions = new ArrayList<>();
 
     /** 文件存储配置（仅 file 模式生效） */
     private FileProperties file = new FileProperties();
@@ -76,6 +85,14 @@ public class OperationLogProperties {
         this.asyncStrategy = asyncStrategy;
     }
 
+    public List<String> getBusinessExceptions() {
+        return businessExceptions;
+    }
+
+    public void setBusinessExceptions(List<String> businessExceptions) {
+        this.businessExceptions = businessExceptions;
+    }
+
     public Boolean getStartupPrint() {
         return startupPrint;
     }
@@ -108,6 +125,7 @@ public class OperationLogProperties {
                 ", maxContentLength=" + maxContentLength +
                 ", saveLocation='" + saveLocation + '\'' +
                 ", asyncStrategy='" + asyncStrategy + '\'' +
+                ", businessExceptions=" + businessExceptions +
                 ", startupPrint=" + startupPrint +
                 ", file=" + file +
                 ", taskExecutor=" + taskExecutor +
