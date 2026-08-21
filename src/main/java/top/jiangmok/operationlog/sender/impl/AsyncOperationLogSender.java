@@ -66,8 +66,10 @@ public class AsyncOperationLogSender implements OperationLogAsyncSender {
         entity.setRequestMethod(message.getRequestMethod());
         entity.setOperUrl(message.getOperUrl());
         entity.setOperIp(message.getOperIp());
+        entity.setOperatorId(message.getOperatorId());
         entity.setOperatorName(message.getOperatorName());
         entity.setOperatorType(message.getOperatorType());
+        entity.setDeptName(message.getDeptName());
         entity.setOperParam(message.getOperParam());
         entity.setJsonResult(message.getJsonResult());
         entity.setStatus(message.getStatus());

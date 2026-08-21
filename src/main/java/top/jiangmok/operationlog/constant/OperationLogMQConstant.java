@@ -27,4 +27,7 @@ public class OperationLogMQConstant {
 
     /** 最大重试次数 */
     public static final int OPERATION_LOG_MAX_RETRY = 3;
+
+    /** RabbitMQ 重试次数消息头 */
+    public static final String OPERATION_LOG_RETRY_HEADER = "x-mok-operation-log-retry";
 }

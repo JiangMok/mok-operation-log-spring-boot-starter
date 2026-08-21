@@ -1,6 +1,7 @@
 package top.jiangmok.operationlog.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import org.springframework.data.elasticsearch.annotations.Document;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -11,6 +12,7 @@ import java.util.Objects;
  * @author mok
  */
 @TableName("mok_operation_log")
+@Document(indexName = "operation_log")
 public class OperationLogEntity {
 
     private String id;

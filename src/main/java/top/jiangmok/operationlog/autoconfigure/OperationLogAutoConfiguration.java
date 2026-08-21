@@ -216,7 +216,9 @@ public class OperationLogAutoConfiguration {
     @ConditionalOnMissingBean
     @ConditionalOnProperty(name = "mok.operation-log.async-strategy", havingValue = "rabbitmq")
     @ConditionalOnClass(RabbitTemplate.class)
-    public OperationLogConsumer operationLogConsumer(OperationLogService operationLogService) {
-        return new OperationLogConsumer(operationLogService);
+    public OperationLogConsumer operationLogConsumer(
+            OperationLogService operationLogService,
+            RabbitTemplate rabbitTemplate) {
+        return new OperationLogConsumer(operationLogService, rabbitTemplate);
     }
 }

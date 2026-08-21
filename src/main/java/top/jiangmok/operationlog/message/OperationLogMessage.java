@@ -20,8 +20,10 @@ public class OperationLogMessage implements Serializable {
     private String requestMethod;
     private String operUrl;
     private String operIp;
+    private String operatorId;
     private String operatorName;
     private String operatorType;
+    private String deptName;
     private String operParam;
     private String jsonResult;
     private Integer status;         // 0-成功, 1-失败, 2-业务失败
@@ -86,6 +88,14 @@ public class OperationLogMessage implements Serializable {
         this.operIp = operIp;
     }
 
+    public String getOperatorId() {
+        return operatorId;
+    }
+
+    public void setOperatorId(String operatorId) {
+        this.operatorId = operatorId;
+    }
+
     public String getOperatorName() {
         return operatorName;
     }
@@ -100,6 +110,14 @@ public class OperationLogMessage implements Serializable {
 
     public void setOperatorType(String operatorType) {
         this.operatorType = operatorType;
+    }
+
+    public String getDeptName() {
+        return deptName;
+    }
+
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
     }
 
     public String getOperParam() {
@@ -152,8 +170,10 @@ public class OperationLogMessage implements Serializable {
                 ", requestMethod='" + requestMethod + '\'' +
                 ", operUrl='" + operUrl + '\'' +
                 ", operIp='" + operIp + '\'' +
+                ", operatorId='" + operatorId + '\'' +
                 ", operatorName='" + operatorName + '\'' +
                 ", operatorType='" + operatorType + '\'' +
+                ", deptName='" + deptName + '\'' +
                 ", operParam='" + operParam + '\'' +
                 ", jsonResult='" + jsonResult + '\'' +
                 ", status=" + status +
@@ -173,8 +193,10 @@ public class OperationLogMessage implements Serializable {
                 && Objects.equals(requestMethod, that.requestMethod)
                 && Objects.equals(operUrl, that.operUrl)
                 && Objects.equals(operIp, that.operIp)
+                && Objects.equals(operatorId, that.operatorId)
                 && Objects.equals(operatorName, that.operatorName)
                 && Objects.equals(operatorType, that.operatorType)
+                && Objects.equals(deptName, that.deptName)
                 && Objects.equals(operParam, that.operParam)
                 && Objects.equals(jsonResult, that.jsonResult)
                 && Objects.equals(status, that.status)
@@ -185,6 +207,7 @@ public class OperationLogMessage implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(id, title, businessType, method, requestMethod, operUrl, operIp,
-                operatorName, operatorType, operParam, jsonResult, status, errorMsg, operTime);
+                operatorId, operatorName, operatorType, deptName,
+                operParam, jsonResult, status, errorMsg, operTime);
     }
 }

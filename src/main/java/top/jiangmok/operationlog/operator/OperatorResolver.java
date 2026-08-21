@@ -11,6 +11,15 @@ package top.jiangmok.operationlog.operator;
  */
 public interface OperatorResolver {
 
+    /**
+     * 一次性解析完整操作人信息。
+     * <p>旧实现无需修改；需要查询数据库的实现可以覆盖该方法，避免四次重复查询。</p>
+     */
+    default OperatorInfo resolve() {
+        return new OperatorInfo(
+                getOperatorId(), getOperatorName(), getOperatorType(), getDeptName());
+    }
+
     /** 获取操作人 ID */
     String getOperatorId();
 

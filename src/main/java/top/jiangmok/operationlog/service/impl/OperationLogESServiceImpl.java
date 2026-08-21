@@ -14,6 +14,7 @@ import org.springframework.data.elasticsearch.core.query.ByQueryResponse;
 import org.springframework.data.elasticsearch.core.query.DeleteQuery;
 import org.springframework.data.elasticsearch.core.query.StringQuery;
 import top.jiangmok.operationlog.entity.OperationLogEntity;
+import top.jiangmok.operationlog.model.OperationLogPageResult;
 import top.jiangmok.operationlog.repository.OperationLogRepository;
 import top.jiangmok.operationlog.service.OperationLogService;
 
@@ -80,6 +81,12 @@ public class OperationLogESServiceImpl implements OperationLogService {
     @Override
     public List<OperationLogEntity> pageQuery(int pageNum, int pageSize,
                                                String keyword, Map<String, Object> conditions) {
+        return pageQueryResult(pageNum, pageSize, keyword, conditions).getRecords();
+    }
+
+    @Override
+    public OperationLogPageResult pageQueryResult(int pageNum, int pageSize,
+                                                   String keyword, Map<String, Object> conditions) {
         BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
         // 条件查询
@@ -118,8 +125,9 @@ public class OperationLogESServiceImpl implements OperationLogService {
         SearchHits<OperationLogEntity> searchHits =
                 elasticsearchOperations.search(searchQuery, OperationLogEntity.class);
 
-        return searchHits.getSearchHits().stream()
+        List<OperationLogEntity> records = searchHits.getSearchHits().stream()
                 .map(SearchHit::getContent)
                 .toList();
+        return new OperationLogPageResult(records, searchHits.getTotalHits(), pageNum, pageSize);
     }
 }

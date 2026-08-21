@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import top.jiangmok.operationlog.entity.OperationLogEntity;
@@ -29,9 +30,16 @@ public class OperationLogConsumer {
     private static final Logger log = LoggerFactory.getLogger(OperationLogConsumer.class);
 
     private final OperationLogService operationLogService;
+    private final RabbitTemplate rabbitTemplate;
 
     public OperationLogConsumer(OperationLogService operationLogService) {
+        this(operationLogService, null);
+    }
+
+    public OperationLogConsumer(OperationLogService operationLogService,
+                                RabbitTemplate rabbitTemplate) {
         this.operationLogService = operationLogService;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     /**
@@ -39,51 +47,31 @@ public class OperationLogConsumer {
      */
     @RabbitListener(queues = OPERATION_LOG_QUEUE)
     public void handleOperationLog(OperationLogMessage message, Channel channel,
-                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
+                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
+                                   @Header(name = OPERATION_LOG_RETRY_HEADER, required = false)
+                                   Integer retryCount) {
         log.debug("接收到操作日志消息: {}", message.getTitle());
 
         OperationLogEntity entity = convertToEntity(message);
+        int currentRetry = retryCount == null ? 0 : retryCount;
 
         try {
             // 1. 幂等性检查
-            OperationLogEntity existLog = operationLogService.findById(message.getId());
-
-            // 2. 已成功处理，直接 ACK
-            if (existLog != null && Integer.valueOf(0).equals(existLog.getStatus())) {
+            if (operationLogService.checkExistsById(message.getId())) {
                 channel.basicAck(deliveryTag, false);
-                log.debug("操作日志已成功处理，跳过: {}", message.getId());
+                log.debug("操作日志已处理，跳过重复消息: {}", message.getId());
                 return;
             }
 
-            // 3. 检查重试上限
-            int currentRetry = (existLog != null && existLog.getRetryCount() != null)
-                    ? existLog.getRetryCount() : 0;
-            if (existLog != null
-                    && Integer.valueOf(1).equals(existLog.getStatus())
-                    && currentRetry >= OPERATION_LOG_MAX_RETRY) {
-                log.warn("消息 {} 重试次数已达上限 {}，丢弃", message.getId(), OPERATION_LOG_MAX_RETRY);
-                channel.basicAck(deliveryTag, false);
-                return;
-            }
-
-            // 4. 保存日志
+            // 2. 保存日志，存储异常必须继续向外抛出，才能触发重试。
             entity.setRetryCount(currentRetry);
-            saveOrUpdate(entity);
+            operationLogService.saveOperationLog(entity);
             channel.basicAck(deliveryTag, false);
             log.debug("操作日志保存成功: {}", message.getTitle());
 
         } catch (Exception e) {
             log.error("处理操作日志失败: {}", e.getMessage(), e);
-            int retryCount = (entity.getRetryCount() == null ? 0 : entity.getRetryCount()) + 1;
-            entity.setStatus(1);
-            entity.setRetryCount(retryCount);
-            saveOrUpdate(entity);
-
-            try {
-                channel.basicNack(deliveryTag, false, true);
-            } catch (IOException ex) {
-                log.error("拒绝消息失败", ex);
-            }
+            retryOrSendToDeadLetter(message, channel, deliveryTag, currentRetry);
         }
     }
 
@@ -125,13 +113,41 @@ public class OperationLogConsumer {
                 OPERATION_LOG_MAX_RETRY, new String(message.getBody()));
     }
 
-    /**
-     * 保存或更新（根据是否存在判断）
-     */
-    private void saveOrUpdate(OperationLogEntity entity) {
-        OperationLogEntity existLog = operationLogService.findById(entity.getId());
-        if (existLog == null) {
-            operationLogService.saveOperationLog(entity);
+    private void retryOrSendToDeadLetter(OperationLogMessage message,
+                                         Channel channel,
+                                         long deliveryTag,
+                                         int currentRetry) {
+        if (rabbitTemplate != null && currentRetry < OPERATION_LOG_MAX_RETRY) {
+            try {
+                int nextRetry = currentRetry + 1;
+                rabbitTemplate.convertAndSend(
+                        OPERATION_LOG_EXCHANGE,
+                        OPERATION_LOG_ROUTING_KEY,
+                        message,
+                        rabbitMessage -> {
+                            rabbitMessage.getMessageProperties()
+                                    .setHeader(OPERATION_LOG_RETRY_HEADER, nextRetry);
+                            return rabbitMessage;
+                        });
+                channel.basicAck(deliveryTag, false);
+                log.warn("操作日志消息已重新投递，第 {} 次重试: {}", nextRetry, message.getId());
+                return;
+            } catch (Exception retryException) {
+                log.error("重新投递操作日志消息失败，将原消息重新入队", retryException);
+                reject(channel, deliveryTag, true);
+                return;
+            }
+        }
+
+        log.error("操作日志消息达到最大重试次数，进入死信队列: {}", message.getId());
+        reject(channel, deliveryTag, false);
+    }
+
+    private void reject(Channel channel, long deliveryTag, boolean requeue) {
+        try {
+            channel.basicNack(deliveryTag, false, requeue);
+        } catch (IOException exception) {
+            log.error("拒绝操作日志消息失败", exception);
         }
     }
 
@@ -147,8 +163,10 @@ public class OperationLogConsumer {
         entity.setRequestMethod(message.getRequestMethod());
         entity.setOperUrl(message.getOperUrl());
         entity.setOperIp(message.getOperIp());
+        entity.setOperatorId(message.getOperatorId());
         entity.setOperatorName(message.getOperatorName());
         entity.setOperatorType(message.getOperatorType());
+        entity.setDeptName(message.getDeptName());
         entity.setOperParam(message.getOperParam());
         entity.setJsonResult(message.getJsonResult());
         entity.setStatus(message.getStatus());

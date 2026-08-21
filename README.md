@@ -2,23 +2,33 @@
 
 基于 **AOP + 可插拔异步策略**的操作日志自动记录 Starter，支持 **文件**、**MySQL** 和 **Elasticsearch** 三后端存储。
 
+## 版本状态
+
+- Maven Central 最新正式版：`1.0.1`
+- 当前开发版：`1.1.0-SNAPSHOT`
+- 构建与测试基线：Java 17、Spring Boot 3.4.5
+
+`1.1.0-SNAPSHOT` 尚未发布到 Maven Central，使用前需要先克隆本仓库并执行 `mvn clean install`。
+
 ## 特性
 
 - 🔌 **零侵入**：一个 `@OperationLog` 注解即可记录操作日志
-- 📁 **零依赖起步**：默认文件存储（JSON Lines），引入即用，不需要数据库、不需要 MQ
+- 📁 **零外部基础设施起步**：默认文件存储（JSON Lines），不需要数据库、ES 或 MQ
 - ⚡ **默认轻量**：内置 `@Async` 线程池异步写入，纯 JDK + Jackson
 - 🔀 **三后端**：文件 → MySQL → ES，按需升级，一行配置切换
 - 📨 **可选 MQ**：可切换至 RabbitMQ 策略，完整保留重试/DLX/幂等逻辑
 - 🧩 **SPI 可扩展**：操作人获取、参数脱敏、异步发送均可自定义实现
 - 🛡️ **参数脱敏**：自动过滤 password/token/secret 等敏感字段
 - 🧾 **业务失败分类**：业务校验异常自动记为"业务失败"（status=2），与系统异常（status=1）区分统计
+- 📄 **标准分页结果**：内置存储返回记录、总数、页码和每页大小
+- 👤 **完整操作人快照**：支持 ID、名称、类型和部门，并可一次性解析
 - 🎯 **Spring Boot 3.x 原生**：基于 AutoConfiguration，零 XML 配置
 
 ---
 
 ## 快速开始
 
-### 引入 Starter
+### 使用 Maven Central 正式版
 
 ```xml
 <dependency>
@@ -28,7 +38,25 @@
 </dependency>
 ```
 
-**就这一个依赖。** 不需要 MySQL、不需要 ES、不需要 RabbitMQ。
+### 使用 1.1.0-SNAPSHOT
+
+先在本仓库执行：
+
+```bash
+mvn clean install
+```
+
+接入方使用：
+
+```xml
+<dependency>
+    <groupId>top.jiangmok</groupId>
+    <artifactId>mok-operation-log-spring-boot-starter</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+默认文件模式不需要 MySQL、Elasticsearch 或 RabbitMQ。Web 应用通常已经提供 Spring Web；其他可选后端依赖由接入方按需引入。
 
 ### 场景一：最小配置
 
@@ -59,7 +87,7 @@ public class UserController {
 
 | 属性 | 实际值 | 含义 |
 |------|--------|------|
-| `save-location` | `file` | 存在文件 |
+| `save-location` | `file` | 存储到文件 |
 | `async-strategy` | `async` | 用 @Async 线程池写日志 |
 | `record-get` | `true` | GET 请求也记录 |
 | `max-content-length` | `2000` | 超长内容自动截断 |
@@ -203,7 +231,7 @@ mok:
     async-strategy: rabbitmq    # 就改这一行
 ```
 
-Starter 自动注册交换机、队列、绑定、死信队列全套基础设施。Consumer 保留重试（最多 3 次）+ 死信兜底 + 幂等检查。
+Starter 自动注册交换机、队列、绑定和死信队列。保存失败时通过消息头记录重试次数并重新投递，最多重试 3 次，超过上限后进入死信队列；重复消息通过日志 ID 幂等检查直接确认。
 
 ---
 
@@ -254,13 +282,24 @@ Starter 自动注册交换机、队列、绑定、死信队列全套基础设施
 | 运维成本 | 零 | 中 | 高 |
 
 > **文件存储亮点（`OperationLogFileServiceImpl`）**  
-> - **并发安全**：`ConcurrentHashMap` 按文件加锁（`synchronized`），多线程追加写入不串行、不丢数据  
+> - **并发安全**：`ConcurrentHashMap` 按文件加锁；同一文件写入会短暂串行，避免内容交叉或丢失
 > - **自动清理**：超出 `file.max-retention-days` 的文件在写入时自动删除，无需外部定时任务  
 > - **时间范围优化**：查询时按文件名中的日期自动缩小扫描范围，避免全量遍历  
 > - **内容截断**：写入时自动按 `max-content-length` 截断过长参数/响应，防止单行爆炸  
 > - **零依赖**：纯 JDK NIO + Jackson，无需任何数据库或中间件
 
 ---
+
+## 分页查询
+
+`OperationLogService` 保留原有 `pageQuery()` 列表接口，并新增带总数的分页接口：
+
+```java
+OperationLogPageResult result = operationLogService.pageQueryResult(
+        pageNum, pageSize, keyword, conditions);
+```
+
+分页结果包含 `records`、`total`、`pageNum` 和 `pageSize`，接入方可以转换成自己的统一响应结构。内置 MySQL、文件和 Elasticsearch 存储都会返回准确总数。自定义 `OperationLogService` 若需要准确总数，应覆盖 `pageQueryResult()`；接口默认实现只用于兼容旧实现。
 
 ## 注解参数
 
@@ -342,7 +381,9 @@ public R delete(@PathVariable Long id) { ... }
 
 如果项目使用 **Sa-Token** 或 **Spring Security**，Starter 会自动检测并创建对应的 OperatorResolver，无需手动实现。
 
-> **注意**：当前 Aspect 自动采集 `operatorName` 和 `operatorType` 写入日志。`operatorId` 和 `deptName` 为预留扩展字段，可在自定义查询/统计场景中使用——如有需要，自行实现并从 `OperatorResolver` 取出即可。
+Starter 会采集 `operatorId`、`operatorName`、`operatorType` 和 `deptName`。默认实现无法获取的字段可能为 `UNKNOWN` 或 `null`；接入方可以通过自定义 `OperatorResolver` 提供完整信息。
+
+`OperatorResolver.resolve()` 会一次性返回 `OperatorInfo`。需要查询用户数据库时建议覆盖该方法，避免四个 getter 各执行一次查询；旧的四个 getter 实现仍然兼容。
 
 手动实现示例：
 
@@ -419,8 +460,9 @@ public class MyKafkaSender implements OperationLogAsyncSender {
 @Component
 public class MyOperationLogConsumer extends OperationLogConsumer {
 
-    public MyOperationLogConsumer(OperationLogService service) {
-        super(service);
+    public MyOperationLogConsumer(OperationLogService service,
+                                  RabbitTemplate rabbitTemplate) {
+        super(service, rabbitTemplate);
     }
 
     @Override
@@ -480,7 +522,9 @@ src/main/java/top/jiangmok/operationlog/
 ├── enums/BusinessType.java                   # 业务类型枚举
 ├── mapper/OperationLogMapper.java            # MyBatis-Plus Mapper
 ├── message/OperationLogMessage.java          # 消息体
+├── model/OperationLogPageResult.java         # 标准分页结果
 ├── operator/                                 # 操作人解析器 SPI
+│   └── OperatorInfo.java                     # 操作人快照
 ├── repository/OperationLogRepository.java    # ES Repository
 ├── sender/                                   # 异步发送器 SPI
 │   └── impl/
@@ -502,7 +546,7 @@ src/main/java/top/jiangmok/operationlog/
 | 依赖 | 必选 | 说明 |
 |------|:--:|------|
 | spring-boot-starter-aop | ✅ | AOP 切面 |
-| spring-boot-starter-web | ✅ | HttpServletRequest |
+| spring-boot-starter-web | 接入方提供 | HTTP 请求采集需要；POM 中为 optional |
 | jackson-databind | ✅ | JSON 序列化 |
 | spring-boot-starter-amqp | ❌ | RabbitMQ 策略时需要 |
 | mybatis-plus-spring-boot3-starter | ❌ | MySQL 存储时需要 |
@@ -511,6 +555,24 @@ src/main/java/top/jiangmok/operationlog/
 | sa-token-spring-boot3-starter | ❌ | 自动解析 Sa-Token 操作人时需要 |
 | spring-boot-starter-security | ❌ | 自动解析 Security 操作人时需要 |
 
+## 构建与发布
+
+日常构建不会触发 GPG：
+
+```bash
+mvn clean verify
+```
+
+正式发布时显式启用 `release` Profile：
+
+```bash
+mvn -Prelease clean deploy
+```
+
+`release` Profile 会生成源码包、Javadoc、GPG 签名并启用 Central Publishing。Maven Central 已发布版本不能覆盖，发布前必须确认版本号和测试结果。
+
+当前 29 项自动化测试覆盖配置开关、SPI、业务失败分类、文件分页、MySQL 异常传播和 RabbitMQ 重试流程。真实 MySQL、Elasticsearch、RabbitMQ 环境的端到端验证仍应在正式发布前执行。
+
 ## License
 
-Apache License 2.0
+[Apache License 2.0](LICENSE)

@@ -14,6 +14,7 @@ import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.desensitize.ParamDesensitizer;
 import top.jiangmok.operationlog.enums.OperationStatus;
 import top.jiangmok.operationlog.message.OperationLogMessage;
+import top.jiangmok.operationlog.operator.OperatorInfo;
 import top.jiangmok.operationlog.operator.OperatorResolver;
 import top.jiangmok.operationlog.sender.OperationLogAsyncSender;
 import top.jiangmok.operationlog.util.IdGenerator;
@@ -133,10 +134,14 @@ public class OperationLogAspect {
 
         // 操作人信息（通过 SPI 接口获取，解耦认证框架）
         try {
-            message.setOperatorName(operatorResolver.getOperatorName());
-            message.setOperatorType(operatorResolver.getOperatorType());
+            OperatorInfo operator = operatorResolver.resolve();
+            message.setOperatorId(operator.getOperatorId());
+            message.setOperatorName(operator.getOperatorName());
+            message.setOperatorType(operator.getOperatorType());
+            message.setDeptName(operator.getDeptName());
         } catch (Exception ex) {
             log.warn("获取操作人信息失败", ex);
+            message.setOperatorId("UNKNOWN");
             message.setOperatorName("UNKNOWN");
             message.setOperatorType("UNKNOWN");
         }

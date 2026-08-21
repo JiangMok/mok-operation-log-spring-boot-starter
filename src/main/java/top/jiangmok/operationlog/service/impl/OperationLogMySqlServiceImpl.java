@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.entity.OperationLogEntity;
 import top.jiangmok.operationlog.mapper.OperationLogMapper;
+import top.jiangmok.operationlog.model.OperationLogPageResult;
 import top.jiangmok.operationlog.service.OperationLogService;
 import top.jiangmok.operationlog.util.IdGenerator;
 
@@ -42,29 +43,25 @@ public class OperationLogMySqlServiceImpl
         if (Boolean.FALSE.equals(properties.getEnabled())) {
             return;
         }
-        try {
-            // 限制参数长度
-            if (entity.getOperParam() != null
-                    && entity.getOperParam().length() > properties.getMaxContentLength()) {
-                entity.setOperParam(entity.getOperParam()
-                        .substring(0, properties.getMaxContentLength()) + "...");
-            }
-            if (entity.getJsonResult() != null
-                    && entity.getJsonResult().length() > properties.getMaxContentLength()) {
-                entity.setJsonResult(entity.getJsonResult()
-                        .substring(0, properties.getMaxContentLength()) + "...");
-            }
-
-            entity.setOperTime(LocalDateTime.now());
-            // 优先使用已有 ID（避免覆盖 Consumer 已设置的 ID），为空时才生成
-            if (entity.getId() == null || entity.getId().isEmpty()) {
-                entity.setId(IdGenerator.generate());
-            }
-            save(entity);
-            log.debug("操作日志已记录：{} - {}", entity.getTitle(), entity.getOperatorName());
-        } catch (Exception e) {
-            log.error("记录操作日志失败", e);
+        // 限制参数长度
+        if (entity.getOperParam() != null
+                && entity.getOperParam().length() > properties.getMaxContentLength()) {
+            entity.setOperParam(entity.getOperParam()
+                    .substring(0, properties.getMaxContentLength()) + "...");
         }
+        if (entity.getJsonResult() != null
+                && entity.getJsonResult().length() > properties.getMaxContentLength()) {
+            entity.setJsonResult(entity.getJsonResult()
+                    .substring(0, properties.getMaxContentLength()) + "...");
+        }
+
+        entity.setOperTime(LocalDateTime.now());
+        // 优先使用已有 ID（避免覆盖 Consumer 已设置的 ID），为空时才生成
+        if (entity.getId() == null || entity.getId().isEmpty()) {
+            entity.setId(IdGenerator.generate());
+        }
+        save(entity);
+        log.debug("操作日志已记录：{} - {}", entity.getTitle(), entity.getOperatorName());
     }
 
     @Override
@@ -94,6 +91,12 @@ public class OperationLogMySqlServiceImpl
     @Override
     public List<OperationLogEntity> pageQuery(int pageNum, int pageSize,
                                                String keyword, Map<String, Object> conditions) {
+        return pageQueryResult(pageNum, pageSize, keyword, conditions).getRecords();
+    }
+
+    @Override
+    public OperationLogPageResult pageQueryResult(int pageNum, int pageSize,
+                                                   String keyword, Map<String, Object> conditions) {
         Page<OperationLogEntity> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<OperationLogEntity> wrapper = new LambdaQueryWrapper<>();
 
@@ -126,6 +129,8 @@ public class OperationLogMySqlServiceImpl
         }
 
         wrapper.orderByDesc(OperationLogEntity::getOperTime);
-        return baseMapper.selectPage(page, wrapper).getRecords();
+        Page<OperationLogEntity> result = baseMapper.selectPage(page, wrapper);
+        return new OperationLogPageResult(
+                result.getRecords(), result.getTotal(), pageNum, pageSize);
     }
 }

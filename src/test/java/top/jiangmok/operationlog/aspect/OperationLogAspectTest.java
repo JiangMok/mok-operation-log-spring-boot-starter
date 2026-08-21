@@ -15,6 +15,7 @@ import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.desensitize.ParamDesensitizer;
 import top.jiangmok.operationlog.enums.OperationStatus;
 import top.jiangmok.operationlog.message.OperationLogMessage;
+import top.jiangmok.operationlog.operator.OperatorInfo;
 import top.jiangmok.operationlog.operator.OperatorResolver;
 import top.jiangmok.operationlog.sender.OperationLogAsyncSender;
 
@@ -45,8 +46,12 @@ class OperationLogAspectTest {
     void setUp() {
         sender = mock(OperationLogAsyncSender.class);
         operatorResolver = mock(OperatorResolver.class);
+        when(operatorResolver.getOperatorId()).thenReturn("42");
         when(operatorResolver.getOperatorName()).thenReturn("测试用户");
         when(operatorResolver.getOperatorType()).thenReturn("ADMIN");
+        when(operatorResolver.getDeptName()).thenReturn("技术部");
+        when(operatorResolver.resolve())
+                .thenReturn(new OperatorInfo("42", "测试用户", "ADMIN", "技术部"));
         paramDesensitizer = mock(ParamDesensitizer.class);
         when(paramDesensitizer.desensitize(any())).thenReturn("{}");
     }
@@ -61,6 +66,9 @@ class OperationLogAspectTest {
 
         assertThat(message.getStatus()).isEqualTo(OperationStatus.SUCCESS.getValue());
         assertThat(message.getErrorMsg()).isNull();
+        assertThat(message.getOperatorId()).isEqualTo("42");
+        assertThat(message.getOperatorName()).isEqualTo("测试用户");
+        assertThat(message.getDeptName()).isEqualTo("技术部");
     }
 
     @Test

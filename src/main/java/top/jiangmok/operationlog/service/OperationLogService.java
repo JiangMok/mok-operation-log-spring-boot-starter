@@ -1,6 +1,7 @@
 package top.jiangmok.operationlog.service;
 
 import top.jiangmok.operationlog.entity.OperationLogEntity;
+import top.jiangmok.operationlog.model.OperationLogPageResult;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,4 +40,16 @@ public interface OperationLogService {
      */
     List<OperationLogEntity> pageQuery(int pageNum, int pageSize,
                                        String keyword, Map<String, Object> conditions);
+
+    /**
+     * 带总记录数的分页查询。
+     * <p>
+     * 默认实现用于兼容已有自定义存储；Starter 内置存储会返回准确总数。
+     * </p>
+     */
+    default OperationLogPageResult pageQueryResult(
+            int pageNum, int pageSize, String keyword, Map<String, Object> conditions) {
+        List<OperationLogEntity> records = pageQuery(pageNum, pageSize, keyword, conditions);
+        return new OperationLogPageResult(records, records.size(), pageNum, pageSize);
+    }
 }

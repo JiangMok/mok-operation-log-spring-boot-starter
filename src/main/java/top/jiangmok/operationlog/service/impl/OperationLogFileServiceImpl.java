@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.jiangmok.operationlog.config.OperationLogProperties;
 import top.jiangmok.operationlog.entity.OperationLogEntity;
+import top.jiangmok.operationlog.model.OperationLogPageResult;
 import top.jiangmok.operationlog.service.OperationLogService;
 import top.jiangmok.operationlog.util.IdGenerator;
 
@@ -52,7 +53,7 @@ public class OperationLogFileServiceImpl implements OperationLogService {
             Files.createDirectories(logDir);
             log.info("操作日志文件存储目录: {}", logDir);
         } catch (IOException e) {
-            log.error("无法创建日志目录: {}", logDir, e);
+            throw new IllegalStateException("无法创建操作日志目录: " + logDir, e);
         }
     }
 
@@ -93,7 +94,7 @@ public class OperationLogFileServiceImpl implements OperationLogService {
             cleanExpiredFiles();
 
         } catch (IOException e) {
-            log.error("写入操作日志文件失败", e);
+            throw new IllegalStateException("写入操作日志文件失败", e);
         }
     }
 
@@ -134,14 +135,21 @@ public class OperationLogFileServiceImpl implements OperationLogService {
     @Override
     public List<OperationLogEntity> pageQuery(int pageNum, int pageSize,
                                                String keyword, Map<String, Object> conditions) {
+        return pageQueryResult(pageNum, pageSize, keyword, conditions).getRecords();
+    }
+
+    @Override
+    public OperationLogPageResult pageQueryResult(int pageNum, int pageSize,
+                                                   String keyword, Map<String, Object> conditions) {
+        int safePageNum = Math.max(1, pageNum);
+        int safePageSize = Math.max(1, pageSize);
         List<OperationLogEntity> results = new ArrayList<>();
-        int skip = (pageNum - 1) * pageSize;
-        int skipped = 0;
+        long skip = (long) (safePageNum - 1) * safePageSize;
+        long matched = 0;
 
         // 确定需要扫描的文件范围
         List<Path> filesToScan = filterFilesByTimeRange(listLogFilesDesc(), conditions);
 
-        outer:
         for (Path file : filesToScan) {
             List<String> lines = readAllLinesSafe(file);
             // 倒序遍历（文件末尾是最新记录，自然 DESC）
@@ -153,18 +161,14 @@ public class OperationLogFileServiceImpl implements OperationLogService {
                 if (!matchesConditions(entity, keyword, conditions)) {
                     continue;
                 }
-                if (skipped < skip) {
-                    skipped++;
-                } else {
+                if (matched >= skip && results.size() < safePageSize) {
                     results.add(entity);
-                    if (results.size() >= pageSize) {
-                        break outer;
-                    }
                 }
+                matched++;
             }
         }
 
-        return results;
+        return new OperationLogPageResult(results, matched, safePageNum, safePageSize);
     }
 
     // ==================== 删除 ====================
