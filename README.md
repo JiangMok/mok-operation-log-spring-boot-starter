@@ -4,11 +4,8 @@
 
 ## 版本状态
 
-- Maven Central 最新正式版：`1.0.1`
-- 当前开发版：`1.1.0-SNAPSHOT`
+- Maven Central 最新正式版：`1.1.0`
 - 构建与测试基线：Java 17、Spring Boot 3.4.5
-
-`1.1.0-SNAPSHOT` 尚未发布到 Maven Central，使用前需要先克隆本仓库并执行 `mvn clean install`。
 
 ## 特性
 
@@ -34,25 +31,7 @@
 <dependency>
     <groupId>top.jiangmok</groupId>
     <artifactId>mok-operation-log-spring-boot-starter</artifactId>
-    <version>1.0.1</version>
-</dependency>
-```
-
-### 使用 1.1.0-SNAPSHOT
-
-先在本仓库执行：
-
-```bash
-mvn clean install
-```
-
-接入方使用：
-
-```xml
-<dependency>
-    <groupId>top.jiangmok</groupId>
-    <artifactId>mok-operation-log-spring-boot-starter</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
